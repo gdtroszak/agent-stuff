@@ -12,7 +12,7 @@ Write clear, scannable, code-first READMEs that let users get started immediatel
 Before drafting, understand:
 - **Package role**: How does it fit in the larger ecosystem? What's it used to build?
 - **Primary workflow**: What's the main use case? Lead with that, not low-level APIs.
-- **Audience framing**: How does the author describe it vs. how you might technically describe it?
+- **Audience**: Who uses this directly? If unclear (e.g., library vs end-user, or multiple sibling packages), ask before drafting.
 
 Iterate section-by-section with the user rather than presenting a complete draft. Cut sections that don't earn their place.
 
@@ -41,6 +41,7 @@ Iterate section-by-section with the user rather than presenting a complete draft
 
 ### Code Examples
 - Complete and copy-pasteable—include imports
+- Verify APIs exist before using them—check source or test the code
 - Inline comments for non-obvious lines
 - Always specify language in fenced blocks: \`\`\`typescript, \`\`\`bash
 - Progressive complexity: Quick Start → Core Concepts → Advanced
