@@ -53,7 +53,8 @@ TODO hygiene:
 
 ## Project Documentation
 
-When making code changes, check if related documentation needs updating (README, examples, doc comments).
+- Use `/skill:readme` for writing or updating READMEs
+- When making code changes, check if related documentation needs updating (README, examples, doc comments)
 
 Keep project-specific AGENTS.md files updated automatically:
 - Document important architectural decisions, conventions, and patterns
