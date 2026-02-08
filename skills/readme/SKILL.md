@@ -1,16 +1,36 @@
+---
+name: readme
+description: "Write or update READMEs. Use when creating documentation for packages, tools, or projects."
+---
+
 # README Skill
 
 Write clear, scannable, code-first READMEs that let users get started immediately.
 
+## Process
+
+Before drafting, understand:
+- **Package role**: How does it fit in the larger ecosystem? What's it used to build?
+- **Primary workflow**: What's the main use case? Lead with that, not low-level APIs.
+- **Audience framing**: How does the author describe it vs. how you might technically describe it?
+
+Iterate section-by-section with the user rather than presenting a complete draft. Cut sections that don't earn their place.
+
+## Preferences
+
+- Lead with **Quick Start**—code before explanation
+- Skip Philosophy, Features, API sections unless they add clear value
+- Emphasize the primary workflow, not low-level building blocks
+- Keep it short; cut aggressively
+- Link to real-world examples rather than duplicating them
+
 ## Structure
 
-1. **Header** (optional) — Centered logo, badges
-2. **Tagline** — One line describing what it does, action-oriented
-3. **Table of Contents** — If >5 sections, use `- [Section](#section)` format
-4. **Quick Start** — Runnable code within first few screens
-5. **Core Sections** — Features, concepts, API/CLI reference
-6. **Development** — Brief contributor setup, link to CONTRIBUTING.md
-7. **License** — Single line at bottom
+1. **Tagline** — One line describing what it does, action-oriented
+2. **Quick Start** — Runnable code within first few screens
+3. **Why** (optional) — Brief motivation, only if non-obvious
+4. **Core Sections** (optional) — Only what's needed: CLI usage, configuration, etc.
+5. **License** — Single line at bottom (if not in monorepo root)
 
 ## Style Rules
 
