@@ -1,6 +1,6 @@
 # agent-stuff
 
-Custom skills, extensions, and prompts for AI coding agents.
+My skills, extensions, and prompts for AI coding agents.
 
 ## Structure
 
