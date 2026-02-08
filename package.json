@@ -1,0 +1,19 @@
+{
+  "name": "pi-customizations",
+  "version": "1.0.0",
+  "description": "Personal pi extensions, skills, prompt templates, and themes",
+  "keywords": ["pi-package"],
+  "author": "greg",
+  "license": "MIT",
+  "pi": {
+    "extensions": ["extensions"],
+    "skills": ["skills"],
+    "prompts": ["prompts"],
+    "themes": ["themes"]
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-tui": "*",
+    "@sinclair/typebox": "*"
+  }
+}
