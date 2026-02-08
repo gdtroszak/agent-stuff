@@ -1,70 +1,19 @@
-# Pi Customizations
+# agent-stuff
 
-Personal [pi](https://github.com/badlogic/pi-mono) extensions, skills, prompt templates, and themes.
+Custom skills, extensions, and prompts for AI coding agents.
 
 ## Structure
 
 ```
-pi-customizations/
-├── extensions/     # TypeScript extensions (.ts)
-├── skills/         # Skill directories with SKILL.md
-├── prompts/        # Prompt templates (.md)
-├── themes/         # Custom themes (.json)
-└── package.json    # Pi package manifest
-```
-
-## Installation
-
-### Option 1: Install as a pi package (recommended)
-
-```bash
-# From GitHub (after pushing)
-pi install git:github.com/greg/pi-customizations
-
-# Or add to settings.json
-{
-  "packages": ["git:github.com/greg/pi-customizations"]
-}
-```
-
-### Option 2: Symlink to global pi directory
-
-```bash
-# Symlink individual directories
-ln -s ~/pi-customizations/extensions ~/.pi/agent/extensions/customizations
-ln -s ~/pi-customizations/skills ~/.pi/agent/skills/customizations
-ln -s ~/pi-customizations/prompts ~/.pi/agent/prompts/customizations
-ln -s ~/pi-customizations/themes ~/.pi/agent/themes/customizations
-```
-
-### Option 3: Add path to settings
-
-Add to `~/.pi/agent/settings.json`:
-
-```json
-{
-  "packages": ["~/pi-customizations"]
-}
-```
-
-## Creating Extensions
-
-Extensions are TypeScript modules in `extensions/`. Example:
-
-```typescript
-// extensions/my-extension.ts
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-
-export default function (pi: ExtensionAPI) {
-  pi.on("session_start", async (_event, ctx) => {
-    ctx.ui.notify("Extension loaded!", "info");
-  });
-}
+skills/           # Markdown skill files (portable)
+extensions/       # pi-specific TypeScript extensions
+prompts/          # Prompt templates
+themes/           # Custom themes (pi-specific)
 ```
 
 ## Creating Skills
 
-Skills are directories with a `SKILL.md` file:
+Skills are markdown instruction files that can be loaded by various agents (Claude Code, Cursor, pi, etc.). Each skill is a directory with a `SKILL.md` file:
 
 ```
 skills/
@@ -86,6 +35,23 @@ description: What this skill does and when to use it.
 Instructions for the agent...
 ```
 
+## Creating Extensions
+
+Extensions are TypeScript modules for [pi](https://github.com/badlogic/pi). Example:
+
+```typescript
+// extensions/my-extension.ts
+import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+
+export default function (pi: ExtensionAPI) {
+  pi.on("session_start", async (_event, ctx) => {
+    ctx.ui.notify("Extension loaded!", "info");
+  });
+}
+```
+
+Use `/reload` in pi to hot-reload extensions after changes.
+
 ## Creating Prompt Templates
 
 Prompt templates are Markdown files in `prompts/`:
@@ -102,14 +68,4 @@ Use with `/code-review` in pi.
 
 ## Creating Themes
 
-Themes are JSON files in `themes/`. See [themes.md](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/themes.md) for the schema.
-
-## Development
-
-Use `/reload` in pi to hot-reload extensions after changes.
-
-Test an extension directly:
-
-```bash
-pi -e ./extensions/my-extension.ts
-```
+Themes are JSON files in `themes/`. See [pi themes documentation](https://github.com/badlogic/pi/blob/main/packages/coding-agent/docs/themes.md) for the schema.
