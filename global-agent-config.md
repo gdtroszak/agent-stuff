@@ -4,6 +4,7 @@
 
 - When asked to go to/show a tmux window, just switch directly via `tmux select-window` — don't explain the keybinding
 - Use feature branches for new work; ask if unsure whether something warrants a branch
+- Don't push to remote without asking
 
 Custom pi configuration is stored at `$HOME/development/personal/agent-stuff/` and symlinked into `$PI_CODING_AGENT_DIR` (`$HOME/.local/share/pi/agent/`):
 
