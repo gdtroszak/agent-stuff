@@ -5,7 +5,7 @@
 - When asked to go to/show a tmux window, just switch directly via `tmux select-window` — don't explain the keybinding
 - Use feature branches for new work; ask if unsure whether something warrants a branch
 
-Custom pi configuration is stored at `/Users/greg/development/personal/agent-stuff/` and symlinked into `$PI_CODING_AGENT_DIR` (`/Users/greg/.local/share/pi/agent/`):
+Custom pi configuration is stored at `$HOME/development/personal/agent-stuff/` and symlinked into `$PI_CODING_AGENT_DIR` (`$HOME/.local/share/pi/agent/`):
 
 - `skills/` - Custom skills (e.g., github)
 - `extensions/` - Custom extensions (answer.ts, gpg-pinentry)
@@ -14,7 +14,7 @@ Custom pi configuration is stored at `/Users/greg/development/personal/agent-stu
 
 ## Important
 
-When creating or modifying skills, extensions, prompts, or themes, always write to the actual storage location (`/Users/greg/development/personal/agent-stuff/`), not the symlinked path.
+When creating or modifying skills, extensions, prompts, or themes, always write to the actual storage location (`$HOME/development/personal/agent-stuff/`), not the symlinked path.
 
 ## Communication Style
 
