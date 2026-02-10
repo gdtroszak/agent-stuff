@@ -21,6 +21,8 @@ tmux kill-server                   # Kill all sessions
 
 ## Window Management
 
+When asked to go to/show a window, switch directly via `tmux select-window` — don't explain the keybinding.
+
 ```bash
 tmux new-window -t mysession                    # New window in session
 tmux new-window -t mysession -n build           # New window with name

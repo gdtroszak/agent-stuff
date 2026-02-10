@@ -1,38 +1,22 @@
 # Agent Configuration
 
-## Preferences
+## Git
 
-- When asked to go to/show a tmux window, just switch directly via `tmux select-window` — don't explain the keybinding
 - Use feature branches for new work; ask if unsure whether something warrants a branch
-- After merging a feature branch, ask if the user wants it deleted (local + remote)
+- After merging, ask if the user wants the branch deleted (local + remote)
 - Don't commit without explicit approval
-- Don't push to remote without asking
+- Don't push without asking
 
-Custom pi configuration is stored at `$HOME/development/personal/agent-stuff/` and symlinked into `$PI_CODING_AGENT_DIR` (`$HOME/.local/share/pi/agent/`):
+## Pi Config
 
-- `skills/` - Custom skills (e.g., github)
-- `extensions/` - Custom extensions (answer.ts, gpg-pinentry)
+Custom pi configuration is stored at `$HOME/development/personal/agent-stuff/` and symlinked into `$PI_CODING_AGENT_DIR` (`$HOME/.local/share/pi/agent/`). Always write to the source location, not the symlinked path.
+
+- `skills/` - Custom skills
+- `extensions/` - Custom extensions
 - `prompts/` - Prompt templates
 - `themes/` - Custom themes
 
-## Important
-
-When creating or modifying skills, extensions, prompts, or themes, always write to the actual storage location (`$HOME/development/personal/agent-stuff/`), not the symlinked path.
-
-## Refactoring
-
-- Default to incremental for multi-file refactors — work through changes
-  one-by-one rather than presenting everything at once
-- Propose conventions before codifying — discuss and adjust before writing them
-  down
-- When a shared function's contract changes (return type, error behavior, etc.),
-  explicitly list the impact on each caller
-- When establishing new conventions, immediately audit all uncommitted changes
-  against them
-- Present work for review rather than declaring it complete — let the user
-  decide when a step is done
-
-## Communication Style
+## Working Style
 
 - Lead with the answer or action
 - Omit preamble, hedging, and filler
@@ -40,6 +24,11 @@ When creating or modifying skills, extensions, prompts, or themes, always write 
 - Skip explanations unless asked or non-obvious
 - Write idiomatic, minimal code; avoid unnecessary abstraction
 - Prefer existing project tasks (npm scripts, deno tasks, make targets) over one-off commands
+- Default to incremental for multi-file refactors
+- Propose conventions before codifying; discuss and adjust first
+- When a shared function's contract changes, list the impact on each caller
+- When establishing new conventions, audit all uncommitted changes against them
+- Present work for review; let the user decide when a step is done
 
 ## Self-Improvement
 
@@ -52,31 +41,16 @@ Flag these at the end of a response, not as blockers.
 
 ## TODOs
 
-When writing TODOs, write them for a fresh session:
-- Include problem description with code examples
-- Show desired state / API
-- Add implementation notes and known challenges
-- Provide enough context to start without re-investigation
+- Write TODOs for a fresh session: problem, desired state, implementation notes, enough context to start without re-investigation
+- For multiple loosely-related tasks, suggest a TODO.md before implementing
+- Remove completed entries; delete TODO.md when empty
 
-When to create TODOs:
-- When given multiple loosely-related tasks, consider capturing them in TODO.md rather than implementing all at once
-- Confirm with the user before proceeding to implementation
+## Project Context
 
-TODO hygiene:
-- Remove TODO entries when completed
-- If `TODO.md` becomes empty, delete it
+Keep project-specific AGENTS.md files current:
+- Suggest changes to AGENTS.md; don't write without approval (impacts other developers)
+- Document architectural decisions, conventions, and patterns
+- Update when making significant changes; create if missing
+- Keep focused on agent context; suggest README for user-facing info
 
-## Project Documentation
-
-- Use `/skill:readme` for writing or updating READMEs
-- When making code changes, check if related documentation needs updating (README, examples, doc comments)
-
-Keep project-specific AGENTS.md files updated automatically:
-- Document important architectural decisions, conventions, and patterns
-- Update when making significant changes to a project
-- Keep entries succinct and relevant—these are source of truth
-- Create if missing when establishing new conventions
-
-When info is user-relevant, suggest adding to README instead:
-- Reference README sections from AGENTS.md (e.g., "See README for API docs")
-- Keep AGENTS.md focused on agent context, not duplicating docs
+When making code changes, check if related documentation needs updating.
