@@ -35,6 +35,7 @@ Identify friction points:
 - Wrong assumptions (about style, scope, approach)
 - Wasted iterations (could have asked first, or checked source)
 - Scope drift (started simple, became complex)
+- Wrong iteration style (should have gone section-by-section, or vice versa)
 
 ### 3. Capture learnings
 
@@ -54,15 +55,6 @@ Update targets:
 - New preferences → global AGENTS.md or relevant skill
 - Recurring patterns → consider a new skill
 - Project-specific conventions → project AGENTS.md
-
-## Reflection Prompts
-
-If stuck, consider:
-- What feedback appeared more than once?
-- Where did I make assumptions I shouldn't have?
-- What would have helped to know upfront?
-- Did I over-engineer or under-deliver on the first pass?
-- Was the iteration style right (section-by-section vs full draft)?
 
 ## Goal
 
