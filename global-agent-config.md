@@ -4,6 +4,8 @@
 
 - When asked to go to/show a tmux window, just switch directly via `tmux select-window` — don't explain the keybinding
 - Use feature branches for new work; ask if unsure whether something warrants a branch
+- After merging a feature branch, ask if the user wants it deleted (local + remote)
+- Don't commit without explicit approval
 - Don't push to remote without asking
 
 Custom pi configuration is stored at `$HOME/development/personal/agent-stuff/` and symlinked into `$PI_CODING_AGENT_DIR` (`$HOME/.local/share/pi/agent/`):
@@ -16,6 +18,19 @@ Custom pi configuration is stored at `$HOME/development/personal/agent-stuff/` a
 ## Important
 
 When creating or modifying skills, extensions, prompts, or themes, always write to the actual storage location (`$HOME/development/personal/agent-stuff/`), not the symlinked path.
+
+## Refactoring
+
+- Default to incremental for multi-file refactors — work through changes
+  one-by-one rather than presenting everything at once
+- Propose conventions before codifying — discuss and adjust before writing them
+  down
+- When a shared function's contract changes (return type, error behavior, etc.),
+  explicitly list the impact on each caller
+- When establishing new conventions, immediately audit all uncommitted changes
+  against them
+- Present work for review rather than declaring it complete — let the user
+  decide when a step is done
 
 ## Communication Style
 
