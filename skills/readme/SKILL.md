@@ -52,6 +52,14 @@ Iterate section-by-section with the user rather than presenting a complete draft
 - `> **Note:**` or `> **Warning:**` for callouts
 - Tables over bullet lists for option/description pairs
 - `---` between major sections (optional)
+- Prefer colons, commas, or periods over em dashes; use em dashes sparingly
+- Package table descriptions: keep concise, no inline examples unless requested
+- Use semantic line breaks: break after sentences or clauses, not at fixed columns
+- For established READMEs, follow existing patterns rather than enforcing new ones
+
+### Tone
+- Direct and factual; avoid dramatic language in technical docs
+- For design principles/philosophy: bullets with brief motivation work better than prose paragraphs
 
 ### Reference Documentation
 - Show TypeScript interfaces inline with comments
