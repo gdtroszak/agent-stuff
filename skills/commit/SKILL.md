@@ -28,8 +28,9 @@ Create a git commit for the current changes using a concise Conventional Commits
 ## Steps
 
 1. Infer from the prompt if the user provided specific file paths/globs and/or additional instructions.
-2. Review `git status` and `git diff` to understand the current changes (limit to argument-specified files if provided).
+2. Review `git status` and `git diff` to understand the current changes (limit to argument-specified files if provided). When staging a subset, check carefully for already-staged files (e.g., from prior `git mv` or `git rm`) that may unintentionally be included.
 3. (Optional) Run `git log -n 50 --pretty=format:%s` to see commonly used scopes.
 4. If there are ambiguous extra files, ask the user for clarification before committing.
-5. Stage only the intended files (all changes if no files specified).
-6. Run `git commit -m "<subject>"` (and `-m "<body>"` if needed).
+5. Run the project's formatter/linter check if one exists (e.g., `deno fmt --check`, `npm run lint`). Fix any issues before proceeding.
+6. Stage only the intended files (all changes if no files specified).
+7. Run `git commit -m "<subject>"` (and `-m "<body>"` if needed).
