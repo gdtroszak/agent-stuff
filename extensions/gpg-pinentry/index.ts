@@ -54,34 +54,138 @@ function mightNeedGpg(command: string): boolean {
 }
 
 /**
- * Check if gpg-agent has a cached passphrase for the default signing key
+ * Send commands to gpg-agent via gpg-connect-agent and return stdout.
  */
-async function isPassphraseCached(): Promise<boolean> {
-  return new Promise((resolve) => {
-    // Try to sign something trivial - if it works without prompting, passphrase is cached
-    const testProc = spawn("gpg", ["--batch", "--pinentry-mode", "cancel", "--sign", "--armor"], {
+function agentCommand(commands: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn("gpg-connect-agent", [], {
       stdio: ["pipe", "pipe", "pipe"],
     });
 
-    testProc.stdin.write("test");
-    testProc.stdin.end();
+    let stdout = "";
+    let stderr = "";
 
-    testProc.on("close", (code) => {
-      // Exit code 0 means signing worked (passphrase was cached)
-      // Non-zero likely means pinentry was needed but cancelled
-      resolve(code === 0);
+    proc.stdout.on("data", (data: Buffer) => {
+      stdout += data.toString();
     });
 
-    testProc.on("error", () => {
-      resolve(false);
+    proc.stderr.on("data", (data: Buffer) => {
+      stderr += data.toString();
     });
 
-    // Timeout after 2 seconds
-    setTimeout(() => {
-      testProc.kill();
-      resolve(false);
-    }, 2000);
+    proc.on("close", (code) => {
+      if (code !== 0) {
+        reject(new Error(`gpg-connect-agent exited ${code}: ${stderr}`));
+        return;
+      }
+      resolve(stdout);
+    });
+
+    proc.on("error", (err) => {
+      reject(err);
+    });
+
+    proc.stdin.write(commands);
+    proc.stdin.end();
   });
+}
+
+/**
+ * Get the keygrip of the signing key.
+ *
+ * Parses `gpg --list-secret-keys --with-keygrip` output. Looks for a
+ * dedicated [S] subkey first, then falls back to the first keygrip
+ * (covers keys with [SC] on the primary).
+ */
+async function getSigningKeygrip(): Promise<string | null> {
+  return new Promise((resolve) => {
+    const proc = spawn("gpg", ["--list-secret-keys", "--with-keygrip"]);
+
+    let output = "";
+    proc.stdout.on("data", (data: Buffer) => {
+      output += data.toString();
+    });
+
+    proc.on("close", (code) => {
+      if (code !== 0) {
+        resolve(null);
+        return;
+      }
+
+      const lines = output.split("\n");
+
+      // Look for a dedicated [S] subkey — search forward from the [S] line
+      // for the next Keygrip line (there may be a fingerprint line in between).
+      for (let i = 0; i < lines.length; i++) {
+        if (/\[S\]/.test(lines[i]) && !/\[SC\]/.test(lines[i])) {
+          for (let j = i + 1; j < lines.length; j++) {
+            const m = lines[j].match(/Keygrip\s*=\s*([A-F0-9]+)/i);
+            if (m) {
+              resolve(m[1]);
+              return;
+            }
+            // Stop if we hit the next key/uid line
+            if (/^(sec|ssb|uid)\s/.test(lines[j])) break;
+          }
+        }
+      }
+
+      // Fallback: first keygrip in the listing (primary [SC] key)
+      for (const line of lines) {
+        const m = line.match(/Keygrip\s*=\s*([A-F0-9]+)/i);
+        if (m) {
+          resolve(m[1]);
+          return;
+        }
+      }
+
+      resolve(null);
+    });
+
+    proc.on("error", () => {
+      resolve(null);
+    });
+  });
+}
+
+/**
+ * Check if gpg-agent has a cached passphrase for the given keygrip.
+ * Uses the KEYINFO agent protocol command — no subprocess or test-sign needed.
+ */
+async function isPassphraseCached(keygrip: string): Promise<boolean> {
+  try {
+    const output = await agentCommand(`KEYINFO ${keygrip}\nBYE\n`);
+    // KEYINFO response field 7 (1-indexed, after "S KEYINFO"):
+    //   S KEYINFO <keygrip> <type> <serial> <idstr> <cached> <protection> ...
+    // cached: 1 = yes, - = no
+    const match = output.match(/^S KEYINFO \S+ \S+ \S+ \S+ (\S+)/m);
+    return match?.[1] === "1";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Preset passphrase in gpg-agent for the given keygrip.
+ * Returns true only if the passphrase is confirmed cached via KEYINFO.
+ */
+async function presetPassphrase(keygrip: string, passphrase: string): Promise<boolean> {
+  const hexPassphrase = Buffer.from(passphrase).toString("hex").toUpperCase();
+
+  try {
+    const output = await agentCommand(
+      `PRESET_PASSPHRASE ${keygrip} -1 ${hexPassphrase}\nBYE\n`,
+    );
+
+    if (output.includes("ERR")) {
+      return false;
+    }
+
+    // Verify the passphrase is actually cached now
+    return await isPassphraseCached(keygrip);
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -158,9 +262,16 @@ async function showPassphraseUI(ctx: ExtensionContext, description?: string): Pr
         return;
       }
 
-      // Regular character input
-      if (data.length === 1 && data.charCodeAt(0) >= 32) {
-        passphrase += data;
+      // Accept all printable characters, including multi-char data events
+      // (e.g. from paste or fast typing where the terminal batches input)
+      let added = false;
+      for (const ch of data) {
+        if (ch.codePointAt(0)! >= 32) {
+          passphrase += ch;
+          added = true;
+        }
+      }
+      if (added) {
         tui.requestRender();
       }
     }
@@ -218,105 +329,6 @@ async function showPassphraseUI(ctx: ExtensionContext, description?: string): Pr
   });
 }
 
-/**
- * Get the keygrip of the signing key
- */
-async function getSigningKeygrip(): Promise<string | null> {
-  return new Promise((resolve) => {
-    const proc = spawn("gpg", ["--list-secret-keys", "--with-keygrip"]);
-
-    let output = "";
-    proc.stdout.on("data", (data) => {
-      output += data.toString();
-    });
-
-    proc.on("close", (code) => {
-      if (code !== 0) {
-        resolve(null);
-        return;
-      }
-
-      // Parse output to find the signing key's keygrip
-      // Format:
-      //   ssb   ed25519 2025-04-23 [S] [expires: 2026-04-23]
-      //         Keygrip = 562F6E208F0792C8A3FA49A89941E735B8C39AF3
-      // We need the keygrip on the line AFTER a line containing [S]
-      const lines = output.split("\n");
-      for (let i = 0; i < lines.length - 1; i++) {
-        if (lines[i].includes("[S]")) {
-          // Next line should have the keygrip
-          const match = lines[i + 1].match(/Keygrip\s*=\s*([A-F0-9]+)/i);
-          if (match) {
-            resolve(match[1]);
-            return;
-          }
-        }
-      }
-
-      // Fallback: if no [S] key found, try to find any keygrip (for keys with [SC] on primary)
-      for (const line of lines) {
-        const match = line.match(/Keygrip\s*=\s*([A-F0-9]+)/i);
-        if (match) {
-          resolve(match[1]);
-          return;
-        }
-      }
-
-      resolve(null);
-    });
-
-    proc.on("error", () => {
-      resolve(null);
-    });
-  });
-}
-
-/**
- * Preset passphrase in gpg-agent so subsequent commands don't need pinentry
- */
-async function presetPassphrase(passphrase: string): Promise<boolean> {
-  const keygrip = await getSigningKeygrip();
-  if (!keygrip) {
-    return false;
-  }
-
-  return new Promise((resolve) => {
-    const presetCmd = spawn("gpg-connect-agent", [], {
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-
-    let presetDone = false;
-    let output = "";
-
-    presetCmd.stdout.on("data", (data) => {
-      output += data.toString();
-    });
-
-    presetCmd.stderr.on("data", (data) => {
-      output += data.toString();
-    });
-
-    presetCmd.on("close", () => {
-      // Check if we got an OK response
-      presetDone = output.includes("OK") && !output.includes("ERR");
-      resolve(presetDone);
-    });
-
-    presetCmd.on("error", () => {
-      resolve(false);
-    });
-
-    // Convert passphrase to hex for the PRESET_PASSPHRASE command
-    const hexPassphrase = Buffer.from(passphrase).toString("hex").toUpperCase();
-
-    // Format: PRESET_PASSPHRASE <keygrip> <timeout> <hexpassphrase>
-    // Timeout -1 means use gpg-agent's default cache time
-    presetCmd.stdin.write(`PRESET_PASSPHRASE ${keygrip} -1 ${hexPassphrase}\n`);
-    presetCmd.stdin.write("BYE\n");
-    presetCmd.stdin.end();
-  });
-}
-
 export default function (pi: ExtensionAPI) {
   // Intercept bash commands that might need GPG
   pi.on("tool_call", async (event, ctx) => {
@@ -329,41 +341,39 @@ export default function (pi: ExtensionAPI) {
       return;
     }
 
-    // Check if passphrase is already cached
-    const cached = await isPassphraseCached();
-    if (cached) {
-      // Passphrase is cached, let the command proceed normally
+    // Resolve keygrip once — used for both cache check and preset
+    const keygrip = await getSigningKeygrip();
+    if (!keygrip) {
+      // Can't determine signing key — let gpg handle it natively
       return;
     }
 
-    // Need passphrase - show UI
+    // Check if passphrase is already cached (direct agent query, no subprocess)
+    if (await isPassphraseCached(keygrip)) {
+      return;
+    }
+
+    // Need passphrase — show UI
     if (!ctx.hasUI) {
-      // Can't show UI, let it fail naturally
       return;
     }
 
     const passphrase = await showPassphraseUI(ctx, "Enter your GPG passphrase to sign this operation.");
 
     if (passphrase === null) {
-      // User cancelled
       return {
         block: true,
         reason: "GPG passphrase entry was cancelled",
       };
     }
 
-    // Try to preset the passphrase in gpg-agent
-    const presetOk = await presetPassphrase(passphrase);
-
-    // Clear passphrase from our memory
-    // (Note: JavaScript strings are immutable, so this just removes our reference.
-    // The actual memory cleanup depends on GC, but we do what we can.)
+    // Preset the passphrase and verify it's cached
+    const presetOk = await presetPassphrase(keygrip, passphrase);
 
     if (!presetOk) {
       ctx.ui.notify("Failed to cache GPG passphrase. The operation may still prompt for it.", "warning");
     }
 
-    // Let the original command proceed - it should now find the passphrase cached
     return;
   });
 
@@ -394,13 +404,18 @@ Your passphrase is NEVER stored or sent to the AI.
   pi.registerCommand("gpg-test", {
     description: "Test if GPG passphrase integration is working",
     handler: async (_args, ctx) => {
-      const cached = await isPassphraseCached();
+      const keygrip = await getSigningKeygrip();
+      if (!keygrip) {
+        ctx.ui.notify("Could not find signing key keygrip.", "warning");
+        return;
+      }
+      const cached = await isPassphraseCached(keygrip);
       if (cached) {
         ctx.ui.notify("✓ GPG passphrase is currently cached. Signing operations will work.", "success");
       } else {
         ctx.ui.notify(
           "GPG passphrase is not cached. You'll be prompted when a signing operation is needed.",
-          "info"
+          "info",
         );
       }
     },
