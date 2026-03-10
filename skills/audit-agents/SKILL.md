@@ -59,9 +59,40 @@ Identify whether this is a **global** or **project** AGENTS.md:
   is expected — don't recommend removing from a project file just because it
   could also live globally.
 
+## Skills Audit
+
+When auditing a project, also audit related skills.
+
+### Existing skills
+
+Check both project-level (`.pi/skills/`, `.agents/skills/`) and global skills
+that are relevant to the project's domain:
+
+- [ ] Are any skills stale? (reference removed workflows, outdated tools, or
+  changed conventions)
+- [ ] Are any skills redundant with each other or with AGENTS.md content?
+- [ ] Are skill descriptions accurate? (descriptions drive when the agent loads
+  them — inaccurate descriptions mean skills get loaded at the wrong time or
+  not at all)
+
+### Suggest new skills
+
+Look for recurring procedural patterns — multi-step workflows that come up
+repeatedly and would benefit from codification. Signals:
+
+- AGENTS.md sections that read more like procedures than rules
+- Workflows that require checking multiple files or running multiple commands
+  in sequence
+- Patterns where getting the steps wrong has caused issues
+
+Suggest whether a new skill belongs at the project level (`.pi/skills/`) or
+global level, based on whether it's codebase-specific or applies broadly.
+
 ## Process
 
-1. Read the file in full
+1. Read the AGENTS.md file in full
 2. Run through the checklist
-3. Present findings grouped by category (remove/relocate/reorganize/reword)
-4. Discuss with the user — don't edit until approved
+3. Scan for existing skills (project-level and relevant global skills)
+4. Identify candidates for new skills
+5. Present findings grouped by category (remove/relocate/reorganize/reword/skills)
+6. Discuss with the user — don't edit until approved
