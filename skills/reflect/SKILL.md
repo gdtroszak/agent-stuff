@@ -5,11 +5,13 @@ description: "Reflect on completed work to improve collaboration. Use after sign
 
 # Reflect Skill
 
-After completing significant tasks, reflect on the process to improve future collaboration.
+Most learnings should be captured inline during work (see "Self-Improvement" in
+global AGENTS.md). This skill is for larger post-task reflections when asked or
+after multi-step work where inline flags weren't sufficient.
 
 ## When to Use
 
-- After multi-step collaborative work (documentation, refactors, new features)
+- After multi-step collaborative work where inline capture missed something
 - When the user explicitly asks to reflect
 - When a task took more iterations than expected
 - Not needed for routine/mechanical tasks
@@ -39,6 +41,9 @@ Identify friction points:
 
 ### 3. Capture learnings
 
+Filter ruthlessly: only capture things a fresh session would get wrong. Skip
+general engineering judgment and lessons already covered by existing conventions.
+
 For each suggested change, indicate whether it belongs at the **global** or
 **project** level:
 
@@ -51,8 +56,15 @@ For each suggested change, indicate whether it belongs at the **global** or
 Ask: "Would this constraint make sense to someone else working on this project,
 or is it about how I collaborate with the agent?"
 
+### 4. Prioritize
+
+Rank learnings by what you'd be most disappointed to lose across sessions.
+Present the ranked list and let the user decide what to save.
+
 Update targets:
-- New preferences → global AGENTS.md or relevant skill
+- Workflow-specific learnings → prefer the relevant skill (commit, rebase, etc.)
+  over AGENTS.md
+- New preferences → global AGENTS.md
 - Recurring patterns → consider a new skill
 - Project-specific conventions → project AGENTS.md
 

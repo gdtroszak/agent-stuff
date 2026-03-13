@@ -29,6 +29,20 @@ View logs for failed steps only:
 gh run view <run-id> --repo owner/repo --log-failed
 ```
 
+When the user has approved branch deletion, pass `--delete-branch` to the merge
+command to clean up in one step — avoids a separate delete call that may fail if
+GitHub already removed the branch:
+```bash
+gh pr merge 453 --squash --delete-branch
+```
+
+## Usernames
+
+Never guess GitHub usernames. Verify before using in any command:
+- Authenticated user: use `@me` where the CLI supports it (e.g., `--assignee @me`,
+  `--reviewer @me`). Fall back to `gh api user --jq '.login'` when `@me` isn't supported.
+- Org members: `gh api orgs/{org}/members --jq '.[].login'`
+
 ## API for Advanced Queries
 
 The `gh api` command is useful for accessing data not available through other subcommands.

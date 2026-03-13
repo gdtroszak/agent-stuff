@@ -21,6 +21,9 @@ import { spawn } from "node:child_process";
 // Timeout for passphrase entry (30 seconds)
 const PASSPHRASE_TIMEOUT_MS = 30_000;
 
+// Max retry attempts for wrong passphrase
+const MAX_PASSPHRASE_ATTEMPTS = 3;
+
 // Patterns that indicate a command might need GPG passphrase
 const GPG_COMMAND_PATTERNS = [
   // Direct GPG signing/encryption that needs secret key
@@ -36,6 +39,11 @@ const GPG_COMMAND_PATTERNS = [
   /\bgpg2\b.*-s\b/,
   /\bgpg2\b.*--decrypt\b/,
   /\bgpg2\b.*-d\b/,
+  // Password managers that decrypt via GPG
+  /\bgopass\b/,
+  /\bpass\b\s+show\b/,
+  // Email client — credentials retrieved via gopass/GPG
+  /\bhimalaya\b/,
   // Git operations that may sign
   /\bgit\b.*\bcommit\b/,
   /\bgit\b.*\btag\b.*-s\b/,
@@ -91,13 +99,14 @@ function agentCommand(commands: string): Promise<string> {
 }
 
 /**
- * Get the keygrip of the signing key.
+ * Get all keygrips for secret keys that have local key material.
  *
- * Parses `gpg --list-secret-keys --with-keygrip` output. Looks for a
- * dedicated [S] subkey first, then falls back to the first keygrip
- * (covers keys with [SC] on the primary).
+ * Parses `gpg --list-secret-keys --with-keygrip` output and returns
+ * keygrips for keys whose material is present. Skips stubs (`sec#`/`ssb#`)
+ * — those have no local secret key, so gpg-agent can't cache a passphrase
+ * for them and KEYINFO returns ERR.
  */
-async function getSigningKeygrip(): Promise<string | null> {
+async function getAllKeygrips(): Promise<string[]> {
   return new Promise((resolve) => {
     const proc = spawn("gpg", ["--list-secret-keys", "--with-keygrip"]);
 
@@ -108,44 +117,40 @@ async function getSigningKeygrip(): Promise<string | null> {
 
     proc.on("close", (code) => {
       if (code !== 0) {
-        resolve(null);
+        resolve([]);
         return;
       }
 
-      const lines = output.split("\n");
-
-      // Look for a dedicated [S] subkey — search forward from the [S] line
-      // for the next Keygrip line (there may be a fingerprint line in between).
-      for (let i = 0; i < lines.length; i++) {
-        if (/\[S\]/.test(lines[i]) && !/\[SC\]/.test(lines[i])) {
-          for (let j = i + 1; j < lines.length; j++) {
-            const m = lines[j].match(/Keygrip\s*=\s*([A-F0-9]+)/i);
-            if (m) {
-              resolve(m[1]);
-              return;
-            }
-            // Stop if we hit the next key/uid line
-            if (/^(sec|ssb|uid)\s/.test(lines[j])) break;
+      const keygrips: string[] = [];
+      let isStub = false;
+      for (const line of output.split("\n")) {
+        // sec# or ssb# means the secret key material is not present
+        if (/^(sec|ssb)/.test(line)) {
+          isStub = line.includes("#");
+        }
+        if (!isStub) {
+          const m = line.match(/Keygrip\s*=\s*([A-F0-9]+)/i);
+          if (m) {
+            keygrips.push(m[1]);
           }
         }
       }
 
-      // Fallback: first keygrip in the listing (primary [SC] key)
-      for (const line of lines) {
-        const m = line.match(/Keygrip\s*=\s*([A-F0-9]+)/i);
-        if (m) {
-          resolve(m[1]);
-          return;
-        }
-      }
-
-      resolve(null);
+      resolve(keygrips);
     });
 
     proc.on("error", () => {
-      resolve(null);
+      resolve([]);
     });
   });
+}
+
+/**
+ * Get the keygrip of the signing key (for backward compat with commands).
+ */
+async function getSigningKeygrip(): Promise<string | null> {
+  const all = await getAllKeygrips();
+  return all[0] ?? null;
 }
 
 /**
@@ -189,9 +194,49 @@ async function presetPassphrase(keygrip: string, passphrase: string): Promise<bo
 }
 
 /**
+ * Clear a cached passphrase from gpg-agent for the given keygrip.
+ */
+async function clearPassphrase(keygrip: string): Promise<void> {
+  try {
+    await agentCommand(`CLEAR_PASSPHRASE ${keygrip}\nBYE\n`);
+  } catch {
+    // Best effort — if it fails, the next preset will overwrite anyway
+  }
+}
+
+/**
+ * Verify the cached passphrase is correct by attempting a test sign.
+ * Uses --pinentry-mode error so gpg never falls back to native pinentry.
+ * Returns true if signing succeeds (passphrase is correct).
+ */
+function verifyPassphrase(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const proc = spawn("gpg", [
+      "--batch",
+      "--pinentry-mode", "error",
+      "--sign",
+      "--output", "/dev/null",
+    ], {
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    proc.stdin.write("test");
+    proc.stdin.end();
+
+    proc.on("close", (code) => {
+      resolve(code === 0);
+    });
+
+    proc.on("error", () => {
+      resolve(false);
+    });
+  });
+}
+
+/**
  * Shows the passphrase entry UI
  */
-async function showPassphraseUI(ctx: ExtensionContext, description?: string): Promise<string | null> {
+async function showPassphraseUI(ctx: ExtensionContext, description?: string, errorMessage?: string): Promise<string | null> {
   if (!ctx.hasUI) {
     return null;
   }
@@ -284,6 +329,11 @@ async function showPassphraseUI(ctx: ExtensionContext, description?: string): Pr
       add(theme.fg("accent", theme.bold(" 🔐 GPG Passphrase Required ")));
       add("");
 
+      if (errorMessage) {
+        add(`  ${theme.fg("warning", errorMessage)}`);
+        add("");
+      }
+
       if (description) {
         const maxLineWidth = width - 4;
         const words = description.split(/\s+/);
@@ -330,6 +380,11 @@ async function showPassphraseUI(ctx: ExtensionContext, description?: string): Pr
 }
 
 export default function (pi: ExtensionAPI) {
+  // Mutex for passphrase prompt — prevents concurrent commands from each
+  // showing their own prompt. The first caller shows the UI; others wait
+  // for it to finish, then re-check the cache.
+  let promptLock: Promise<void> | null = null;
+
   // Intercept bash commands that might need GPG
   pi.on("tool_call", async (event, ctx) => {
     if (event.toolName !== "Bash" && event.toolName !== "bash") {
@@ -341,40 +396,94 @@ export default function (pi: ExtensionAPI) {
       return;
     }
 
-    // Resolve keygrip once — used for both cache check and preset
-    const keygrip = await getSigningKeygrip();
-    if (!keygrip) {
-      // Can't determine signing key — let gpg handle it natively
+    // Get all keygrips — we need to preset for signing [S], encryption [E], etc.
+    const keygrips = await getAllKeygrips();
+    if (keygrips.length === 0) {
+      // Can't determine keys — let gpg handle it natively
       return;
     }
 
-    // Check if passphrase is already cached (direct agent query, no subprocess)
-    if (await isPassphraseCached(keygrip)) {
+    // Check if passphrase is already cached for all keygrips
+    const cacheResults = await Promise.all(keygrips.map((kg) => isPassphraseCached(kg)));
+    if (cacheResults.every(Boolean)) {
       return;
     }
 
-    // Need passphrase — show UI
-    if (!ctx.hasUI) {
-      return;
-    }
-
-    const passphrase = await showPassphraseUI(ctx, "Enter your GPG passphrase to sign this operation.");
-
-    if (passphrase === null) {
+    // If another call is already prompting, wait for it then re-check
+    if (promptLock) {
+      await promptLock;
+      const rechecked = await Promise.all(keygrips.map((kg) => isPassphraseCached(kg)));
+      if (rechecked.every(Boolean)) {
+        return;
+      }
+      // Still not cached (user cancelled or preset failed) — block this command too
       return {
         block: true,
         reason: "GPG passphrase entry was cancelled",
       };
     }
 
-    // Preset the passphrase and verify it's cached
-    const presetOk = await presetPassphrase(keygrip, passphrase);
-
-    if (!presetOk) {
-      ctx.ui.notify("Failed to cache GPG passphrase. The operation may still prompt for it.", "warning");
+    // Need passphrase — show UI with retry loop
+    if (!ctx.hasUI) {
+      return;
     }
 
-    return;
+    let resolvePromptLock: () => void;
+    promptLock = new Promise((resolve) => { resolvePromptLock = resolve; });
+
+    try {
+      let errorMessage: string | undefined;
+
+      for (let attempt = 0; attempt < MAX_PASSPHRASE_ATTEMPTS; attempt++) {
+        const remainingAttempts = MAX_PASSPHRASE_ATTEMPTS - attempt;
+        const description = attempt === 0
+          ? "Enter your GPG passphrase to sign this operation."
+          : `Enter your GPG passphrase to sign this operation. (${remainingAttempts} attempt${remainingAttempts === 1 ? "" : "s"} remaining)`;
+
+        const passphrase = await showPassphraseUI(ctx, description, errorMessage);
+
+        if (passphrase === null) {
+          return {
+            block: true,
+            reason: "GPG passphrase entry was cancelled",
+          };
+        }
+
+        // Preset the passphrase for all keygrips that aren't already cached
+        const presetResults = await Promise.all(
+          keygrips.map(async (kg, i) => {
+            if (cacheResults[i]) return true;
+            return presetPassphrase(kg, passphrase);
+          }),
+        );
+
+        if (presetResults.some((ok) => !ok)) {
+          // Preset itself failed (e.g. allow-preset-passphrase not set)
+          errorMessage = "Failed to cache passphrase — check gpg-agent config.";
+          continue;
+        }
+
+        // Verify the passphrase is actually correct by doing a test sign.
+        // This prevents gpg from falling back to native pinentry on a bad passphrase.
+        const correct = await verifyPassphrase();
+        if (correct) {
+          return; // Passphrase verified — let the command proceed
+        }
+
+        // Wrong passphrase — clear the bad cached entries and retry
+        await Promise.all(keygrips.map((kg) => clearPassphrase(kg)));
+        errorMessage = "Wrong passphrase. Try again.";
+      }
+
+      // All attempts exhausted
+      return {
+        block: true,
+        reason: "GPG passphrase: maximum attempts exceeded",
+      };
+    } finally {
+      resolvePromptLock!();
+      promptLock = null;
+    }
   });
 
   // Register setup command

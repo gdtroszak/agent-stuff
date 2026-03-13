@@ -55,7 +55,9 @@ When you run a command that needs GPG signing (git commit, gpg --sign, etc.), an
 - **Ctrl+U**: Clear the input field
 - **30 second timeout**: Auto-cancels if you don't respond
 
-Once entered, gpg-agent caches the passphrase according to its settings (usually 10+ minutes), so you won't be prompted again for a while.
+If you enter the wrong passphrase, the extension verifies it with a test sign and re-prompts (up to 3 attempts) instead of letting gpg fall back to native pinentry, which would break the terminal session.
+
+Once entered correctly, gpg-agent caches the passphrase according to its settings (usually 10+ minutes), so you won't be prompted again for a while.
 
 ## Commands
 
@@ -68,7 +70,9 @@ Once entered, gpg-agent caches the passphrase according to its settings (usually
 2. Checks if gpg-agent already has the passphrase cached (by attempting a test sign with `--pinentry-mode cancel`)
 3. If not cached, shows the passphrase UI
 4. Presets the passphrase in gpg-agent using `gpg-connect-agent PRESET_PASSPHRASE` with your signing key's keygrip
-5. Lets the original command proceed normally (gpg-agent now has the passphrase cached)
+5. Verifies the passphrase by attempting a test sign with `--pinentry-mode error` (never falls back to native pinentry)
+6. If wrong, clears the bad cache and re-prompts (up to 3 attempts)
+7. Lets the original command proceed normally (gpg-agent now has the passphrase cached)
 
 ## What `allow-preset-passphrase` Does
 

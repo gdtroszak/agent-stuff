@@ -32,5 +32,5 @@ Create a git commit for the current changes using a concise Conventional Commits
 3. (Optional) Run `git log -n 50 --pretty=format:%s` to see commonly used scopes.
 4. If there are ambiguous extra files, ask the user for clarification before committing.
 5. Run the project's formatter/linter check if one exists (e.g., `deno fmt --check`, `npm run lint`) against all changed files — not just source code (formatters often cover markdown, JSON, etc.). Fix any issues before proceeding.
-6. Stage only the intended files (all changes if no files specified).
+6. Stage only the intended files (all changes if no files specified). Use explicit file lists — avoid `git add -A` or `git commit -a`, which can pick up unrelated files.
 7. Run `git commit -m "<subject>"` (and `-m "<body>"` if needed).

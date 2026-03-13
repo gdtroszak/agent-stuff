@@ -22,6 +22,9 @@
 - Use feature branches for new work; ask if unsure whether something warrants a branch
 - Before creating a feature branch, verify local branch is up to date with its remote (`git log origin/<branch>..<branch>`) and push or address any divergence first
 - After merging, ask if the user wants the branch deleted (local + remote)
+- Before deleting a merged branch, check for open PRs that use it as a base
+  (`gh pr list --base <branch>`). Retarget them to the merge target first —
+  GitHub closes PRs whose base branch is deleted, and they can't be reopened.
 - When adding dependencies, include lockfile changes in the same commit
 - Use `gh issue develop` to create the feature branch for an issue. For large
   features, create sub-branches (e.g. `443-p1-...`, `443-p2-...`) off the

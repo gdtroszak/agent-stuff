@@ -35,6 +35,19 @@ while ! tmux capture-pane -t mysession -p | tail -1 | grep -q '^\$'; do
 done
 ```
 
+### Spawning Interactive Pi Sessions
+
+When the user wants to interact with a spawned pi session, launch pi without
+`-p`/`--no-session`, wait for it to start, then send the initial prompt via
+`send-keys`. Using `-p` makes the session non-interactive.
+
+```bash
+tmux new-window -t <session> -n <name>
+tmux send-keys -t <session>:<name> 'pi --model <model> --thinking <level>' Enter
+sleep 3
+tmux send-keys -t <session>:<name> '<prompt>' Enter
+```
+
 ### Check Running Process
 
 ```bash
