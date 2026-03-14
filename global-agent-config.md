@@ -143,6 +143,8 @@ Custom pi configuration is stored at `$HOME/development/personal/agent-stuff/` a
 - Before proposing a plan for adding something new, check for existing "how to add X" documentation in READMEs or contributing guides and follow those steps
 - Propose conventions before codifying; discuss and adjust first
 - When establishing new conventions, audit all uncommitted changes against them
+- Don't close or kill tmux windows opened for the user (e.g., diff views)
+  without asking — they may still be using them
 - Present work for review; let the user decide when a step is done
 - When auditing completeness, confirm each public entrypoint with the user before marking done
 - When writing documentation examples, agree on what use cases to demonstrate
