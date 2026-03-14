@@ -130,8 +130,6 @@ Custom pi configuration is stored at `$HOME/development/personal/agent-stuff/` a
 
 - When looking up project/repo directories, try `zoxide query` before manual
   `find`/`ls` traversal.
-- Before running commands that need credentials (himalaya, gpg, gopass), verify
-  the passphrase is cached or the relevant extension is loaded. Don't fire blind.
 - After triage or information gathering, present findings and let the user direct
   next steps. Don't jump to action items.
 - Before committing a new script, verify it works from a clean state (no cached

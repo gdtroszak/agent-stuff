@@ -62,7 +62,8 @@ pi --list-models openai-codex 2>&1 | tail -5 | awk '{print $2}'
 pi --list-models anthropic 2>&1 | grep 'claude-opus' | tail -1 | awk '{print $2}'
 ```
 
-Launch the agent in a tmux window with `--session-control` and a session name:
+Launch the agent in a tmux window with a session name (session control is
+enabled by default):
 
 ```bash
 TMUX_SESSION=$(tmux display-message -p '#S')

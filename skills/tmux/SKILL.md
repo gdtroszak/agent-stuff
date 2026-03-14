@@ -39,13 +39,15 @@ done
 
 When the user wants to interact with a spawned pi session, launch pi without
 `-p`/`--no-session`, wait for it to start, then send the initial prompt via
-`send-keys`. Using `-p` makes the session non-interactive.
+`send-keys`. Using `-p` makes the session non-interactive. Include `--name`
+so the session is addressable via `send_to_session`.
 
 ```bash
-tmux new-window -t <session> -n <name>
-tmux send-keys -t <session>:<name> 'pi --model <model> --thinking <level>' Enter
+TMUX_SESSION=$(tmux display-message -p '#S')
+tmux new-window -t $TMUX_SESSION -n <name>
+tmux send-keys -t $TMUX_SESSION:<name> 'pi --model <model> --thinking <level> --name '$TMUX_SESSION'-<name>' Enter
 sleep 3
-tmux send-keys -t <session>:<name> '<prompt>' Enter
+tmux send-keys -t $TMUX_SESSION:<name> '<prompt>' Enter
 ```
 
 ### Check Running Process

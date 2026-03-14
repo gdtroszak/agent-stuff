@@ -79,8 +79,8 @@ prompts — they produce code that needs rework.
 
 ## Spawning
 
-All spawned agents include `--session-control` and `--name` for inter-session
-communication. The tmux window provides visual monitoring.
+All spawned agents include `--name` for inter-session communication (session
+control is enabled by default). The tmux window provides visual monitoring.
 
 ### Single agent (no worktree)
 

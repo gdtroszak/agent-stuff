@@ -23,5 +23,4 @@ Symlinked into `~/.local/share/pi/agent/` for use by pi.
 ### Extensions
 
 - Use pi's extension API
-- Include a README for complex extensions (like `gpg-pinentry/`)
 - Reference pi docs: `/opt/homebrew/lib/node_modules/@mariozechner/pi-coding-agent/docs/extensions.md`

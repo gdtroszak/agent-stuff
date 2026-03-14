@@ -233,7 +233,23 @@ async function removeSocket(socketPath: string | null): Promise<void> {
 	}
 }
 
-// TODO: add GC for stale sockets/aliases older than 7 days.
+async function gcStaleEntries(): Promise<void> {
+	try {
+		const entries = await fs.readdir(CONTROL_DIR, { withFileTypes: true });
+		for (const entry of entries) {
+			if (!entry.name.endsWith(SOCKET_SUFFIX)) continue;
+			const socketPath = path.join(CONTROL_DIR, entry.name);
+			const alive = await isSocketAlive(socketPath);
+			if (alive) continue;
+			await removeAliasesForSocket(socketPath);
+			await removeSocket(socketPath);
+		}
+	} catch (error) {
+		if (isErrnoException(error) && error.code === "ENOENT") return;
+		// Best effort — don't fail session start over cleanup
+	}
+}
+
 async function removeAliasesForSocket(socketPath: string | null): Promise<void> {
 	if (!socketPath) return;
 	try {
@@ -907,6 +923,7 @@ async function sendRpcCommand(
 
 async function startControlServer(pi: ExtensionAPI, state: SocketState, ctx: ExtensionContext): Promise<void> {
 	await ensureControlDir();
+	await gcStaleEntries();
 	const sessionId = ctx.sessionManager.getSessionId();
 	const socketPath = getSocketPath(sessionId);
 
