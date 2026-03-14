@@ -5,13 +5,31 @@
  * a passphrase input UI. Uses gpg-agent's passphrase preset feature to
  * cache the passphrase before the command runs.
  *
- * The passphrase is NEVER stored or sent over the wire - it goes directly
+ * The passphrase is NEVER stored or sent over the wire — it goes directly
  * from the TUI input to gpg-agent's secure cache.
  *
  * Setup:
- * 1. Add to ~/.gnupg/gpg-agent.conf:
- *    allow-preset-passphrase
- * 2. Reload gpg-agent: gpgconf --kill gpg-agent
+ *   1. Add `allow-preset-passphrase` to ~/.gnupg/gpg-agent.conf
+ *   2. Reload: gpgconf --kill gpg-agent
+ *
+ * Commands:
+ *   /gpg-setup  — show setup instructions
+ *   /gpg-test   — check if passphrase is currently cached
+ *
+ * How it works:
+ *   1. Intercepts bash calls matching GPG-related patterns (git commit, gpg --sign, etc.)
+ *   2. Checks if gpg-agent already has the passphrase cached (KEYINFO protocol command)
+ *   3. If not cached, shows a TUI passphrase prompt (30s timeout)
+ *   4. Presets the passphrase in gpg-agent via PRESET_PASSPHRASE for all local keygrips
+ *   5. Verifies correctness with a test sign (--pinentry-mode error, never falls back to
+ *      native pinentry which would break the terminal)
+ *   6. On wrong passphrase, clears the bad cache and re-prompts (up to 3 attempts)
+ *   7. Lets the original command proceed — gpg-agent now has the passphrase cached
+ *
+ * Troubleshooting:
+ *   - No prompt appears: passphrase is already cached, or the command didn't match a pattern
+ *   - "Failed to cache" warning: allow-preset-passphrase not set, or gpg-agent needs restart
+ *   - Command still fails: check key validity, git config user.signingkey, passphrase correctness
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
