@@ -74,6 +74,10 @@ Use the **review** skill to run both review types in parallel:
 2. **Consistency review** — fully autonomous. Address findings, re-run until
    verdict is clean. Summarize any findings to the user.
 
+**Wait for both verdicts before addressing any findings.** Editing files while
+a reviewer is still reading the diff invalidates its working state and produces
+stale findings.
+
 ## Phase 6: Deliver
 
 - Commit changes (logical, separate commits based on how implementation went)

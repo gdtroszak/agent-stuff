@@ -8,6 +8,14 @@ description: "Run correctness and/or consistency reviews via separate agents. Ha
 Launch review agents in tmux windows, collect verdicts, address findings,
 and handle re-reviews. Supports two review types: correctness and consistency.
 
+Communication uses `send_to_session` (session-control extension) for prompts,
+progress, and verdicts. Tmux windows remain for visual monitoring.
+
+## Prerequisites
+
+The managing agent must have the `send_to_session` tool available. This is
+enabled by default when the control extension is installed.
+
 ## Review Types
 
 ### Correctness
@@ -29,17 +37,15 @@ Focuses on adherence to existing codebase patterns and conventions.
 - **Review prompt:**
   `Review the changes on this branch (<branch> vs <base>) for consistency with existing codebase patterns. Use the codebase-review skill.`
 
-## Verdict File Naming
+## Session Naming
 
-Use a unique suffix per review session to avoid collisions when multiple
-orchestrations run in parallel. Generate it once at the start:
+Review sessions are named `<tmux-session>-<type>` to avoid collisions across
+projects:
 
 ```bash
-REVIEW_ID=$(uuidgen | tr '[:upper:]' '[:lower:]' | cut -d- -f1)
-# Produces paths like /tmp/pi-review-correctness-a1b2c3d4.json
+TMUX_SESSION=$(tmux display-message -p '#S')
+# Produces: oxbo-correctness, oxbo-consistency
 ```
-
-Use `$REVIEW_ID` in all verdict file paths below.
 
 ## Launching a Review Agent
 
@@ -56,48 +62,78 @@ pi --list-models openai-codex 2>&1 | tail -5 | awk '{print $2}'
 pi --list-models anthropic 2>&1 | grep 'claude-opus' | tail -1 | awk '{print $2}'
 ```
 
-Launch:
+Launch the agent in a tmux window with `--session-control` and a session name:
 
 ```bash
-tmux new-window -t <session> -n <type>   # "correctness" or "consistency"
+TMUX_SESSION=$(tmux display-message -p '#S')
+
+tmux new-window -t $TMUX_SESSION -n <type>
 sleep 1
-tmux send-keys -t <session>:<type> \
-  'cd <project-dir> && pi --provider <provider> --model <model> --thinking <level>' Enter
-sleep 5
-tmux send-keys -t <session>:<type> '<review-prompt>' Enter
+tmux send-keys -t $TMUX_SESSION:<type> \
+  'cd <project-dir> && pi --provider <provider> --model <model> --thinking <level> --name '$TMUX_SESSION'-<type>' Enter
 ```
 
-Immediately after, request a verdict file:
+Wait for the session to be ready (socket created), then send the review
+prompt and progress/verdict instructions via `send_to_session`:
 
 ```bash
-sleep 2
-tmux send-keys -t <session>:<type> \
-  'After completing your review, write your verdict and findings to /tmp/pi-review-<type>-<REVIEW_ID>.json as { "verdict": "correct|needs_attention", "findings": [...] }. Then say "verdict written".' Enter
+sleep 5
+```
+
+Then use the `send_to_session` tool:
+
+```
+send_to_session(
+  sessionName: "<tmux-session>-<type>",
+  message: "<review-prompt>
+
+After completing your review, send your verdict back to me via send_to_session.
+Use this format in the message:
+
+VERDICT: correct (or needs_attention)
+FINDINGS:
+- (list findings, or 'none')
+
+Send brief progress updates as you work (e.g., 'reading diff', 'running tests',
+'writing verdict') so I know you're making progress.",
+  mode: "steer"
+)
 ```
 
 ## Collecting the Verdict
 
-Poll the verdict file:
+The review agent sends the verdict back via `send_to_session`. You'll receive
+it as a message in your session — no polling needed.
 
-```bash
-cat /tmp/pi-review-<type>-<REVIEW_ID>.json 2>/dev/null
+### If the agent goes silent
+
+If no progress update arrives within ~60 seconds, check on the agent:
+
+```
+send_to_session(sessionName: "<name>", action: "get_summary")
 ```
 
-If the file doesn't appear within a reasonable time, fall back to
-`tmux capture-pane -t <session>:<type> -p -S -80` to check progress.
-
-If the reviewer is stuck (looping, erroring), nudge it:
+If `get_summary` fails or shows the agent is stuck, fall back to tmux:
 
 ```bash
-tmux send-keys -t <session>:<type> \
-  'Please output your findings now and write the verdict file.' Enter
+tmux capture-pane -t <session>:<type> -p -S -40
+```
+
+Nudge via `send_to_session` if needed:
+
+```
+send_to_session(
+  sessionName: "<name>",
+  message: "Please send your findings now via send_to_session.",
+  mode: "steer"
+)
 ```
 
 ## Handling Findings
 
-1. Read the verdict file
+1. Read the verdict from the received message
 2. Present findings to the user before closing the review window
-3. If verdict is clean — close the window, clean up, done
+3. If verdict is clean — close the window, done
 4. If findings exist:
    a. Assess each finding — address valid ones, note any that are out of
       scope or pre-existing
@@ -109,31 +145,25 @@ tmux send-keys -t <session>:<type> \
 
 ## Scoped Re-Review Messages
 
-Be specific to prevent a full re-review:
-
-- List the exact files that changed
-- Describe what was done to address each finding
-- Assess the scope of changes: "mechanical fix" vs. "restructured approach"
-- Ask the reviewer to focus only on changed files
-- Remind it to write the verdict file
-
-Example:
+Send via `send_to_session`. Be specific to prevent a full re-review:
 
 ```
-I addressed your two findings:
+send_to_session(
+  sessionName: "<name>",
+  message: "I addressed your two findings:
 1. [file X, line Y] — added null check for the edge case you identified
 2. [file Z] — this is pre-existing, tracked in issue #N
 
 Only file X changed. Mechanical fix, no structural change.
-Please re-review file X only and write your verdict to
-/tmp/pi-review-correctness-<REVIEW_ID>.json.
+Please re-review file X only and send your verdict back via send_to_session.",
+  mode: "steer"
+)
 ```
 
 ## Cleanup
 
-Always clean up after a review completes:
-
 ```bash
-rm -f /tmp/pi-review-<type>-<REVIEW_ID>.json
 tmux kill-window -t <session>:<type>
 ```
+
+Session-control sockets are cleaned up automatically on agent shutdown.

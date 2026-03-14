@@ -8,6 +8,12 @@ description: "Spawn implementation agents in tmux windows with optional git work
 Delegate implementation work to separate pi sessions running in tmux windows.
 Supports single agents (same branch) and parallel agents (separate worktrees).
 
+## Prerequisites
+
+The managing agent (your session) must have the `send_to_session` tool
+available via the session-control extension. This is enabled by default when
+the control extension is installed.
+
 ## Deciding What to Spawn
 
 - **Single agent, no worktree:** One track of work on the current branch.
@@ -18,6 +24,23 @@ Supports single agents (same branch) and parallel agents (separate worktrees).
   simultaneously. Each gets its own worktree and sub-branch.
 
 For trivial steps (a few lines, no judgment), do them inline — don't spawn.
+
+## Session Naming
+
+Spawned agents get a session name prefixed with the tmux session name to
+avoid collisions across projects:
+
+```
+<tmux-session>-<label>
+```
+
+For example, in tmux session `oxbo`: `oxbo-correctness`, `oxbo-p1-data`.
+
+Get the tmux session name:
+
+```bash
+TMUX_SESSION=$(tmux display-message -p '#S')
+```
 
 ## Model Selection
 
@@ -56,24 +79,29 @@ prompts — they produce code that needs rework.
 
 ## Spawning
 
+All spawned agents include `--session-control` and `--name` for inter-session
+communication. The tmux window provides visual monitoring.
+
 ### Single agent (no worktree)
 
 ```bash
-tmux new-window -t <session> -n <label>
+TMUX_SESSION=$(tmux display-message -p '#S')
+tmux new-window -t $TMUX_SESSION -n <label>
 sleep 1
-tmux send-keys -t <session>:<label> \
-  'cd <project-dir> && pi --model <model> --thinking <level> --no-session -p "<prompt>"' Enter
+tmux send-keys -t $TMUX_SESSION:<label> \
+  'cd <project-dir> && pi --model <model> --thinking <level> --no-session --name '$TMUX_SESSION'-<label> -p "<prompt>"' Enter
 ```
 
 ### Single agent (worktree)
 
 ```bash
+TMUX_SESSION=$(tmux display-message -p '#S')
 git branch <sub-branch> <base-branch>
 git worktree add <worktree-path> <sub-branch>
-tmux new-window -t <session> -n <label> -c <worktree-path>
+tmux new-window -t $TMUX_SESSION -n <label> -c <worktree-path>
 sleep 1
-tmux send-keys -t <session>:<label> \
-  'pi --model <model> --thinking <level> --no-session -p "<prompt>"' Enter
+tmux send-keys -t $TMUX_SESSION:<label> \
+  'pi --model <model> --thinking <level> --no-session --name '$TMUX_SESSION'-<label> -p "<prompt>"' Enter
 ```
 
 ### Parallel agents
@@ -81,21 +109,23 @@ tmux send-keys -t <session>:<label> \
 Repeat the worktree pattern for each independent track:
 
 ```bash
+TMUX_SESSION=$(tmux display-message -p '#S')
+
 # Track 1
 git branch <branch>-p1-<label> <base-branch>
 git worktree add <repo>-p1 <branch>-p1-<label>
-tmux new-window -t <session> -n p1-<label> -c <repo>-p1
+tmux new-window -t $TMUX_SESSION -n p1-<label> -c <repo>-p1
 sleep 1
-tmux send-keys -t <session>:p1-<label> \
-  'pi --model <model> --thinking <level> --no-session @/tmp/prompt-p1.md' Enter
+tmux send-keys -t $TMUX_SESSION:p1-<label> \
+  'pi --model <model> --thinking <level> --no-session --name '$TMUX_SESSION'-p1-<label> @/tmp/prompt-p1.md' Enter
 
 # Track 2
 git branch <branch>-p2-<label> <base-branch>
 git worktree add <repo>-p2 <branch>-p2-<label>
-tmux new-window -t <session> -n p2-<label> -c <repo>-p2
+tmux new-window -t $TMUX_SESSION -n p2-<label> -c <repo>-p2
 sleep 1
-tmux send-keys -t <session>:p2-<label> \
-  'pi --model <model> --thinking <level> --no-session @/tmp/prompt-p2.md' Enter
+tmux send-keys -t $TMUX_SESSION:p2-<label> \
+  'pi --model <model> --thinking <level> --no-session --name '$TMUX_SESSION'-p2-<label> @/tmp/prompt-p2.md' Enter
 ```
 
 When parallel tracks share files (e.g., types, data layer), only one track
@@ -104,7 +134,21 @@ post-integration.
 
 ## Monitoring
 
-Wait for agents to finish:
+### Via send_to_session
+
+Use `send_to_session` for communication with spawned agents:
+
+```
+# Check on an agent
+send_to_session(sessionName: "<name>", action: "get_summary")
+
+# Send guidance
+send_to_session(sessionName: "<name>", message: "<guidance>", mode: "steer")
+```
+
+### Waiting for completion
+
+Wait for agents to finish by checking if the shell has returned:
 
 ```bash
 for win in <window-list>; do
@@ -114,16 +158,12 @@ for win in <window-list>; do
 done
 ```
 
-If an agent appears stuck, check its output:
+### Fallback
+
+If `send_to_session` fails (agent not reachable), fall back to tmux:
 
 ```bash
 tmux capture-pane -t <session>:<window> -p -S -40
-```
-
-Intervene by sending messages if needed:
-
-```bash
-tmux send-keys -t <session>:<window> '<guidance>' Enter
 ```
 
 ## Integration
