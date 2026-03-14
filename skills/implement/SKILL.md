@@ -1,48 +1,43 @@
 ---
-name: spawn-agent
-description: "Spawn implementation agents in tmux windows with optional git worktrees. Use for delegating implementation work — single or parallel."
+name: implement
+description: "Assess complexity and implement — directly, via a single agent, or with parallel agents in worktrees."
 ---
 
-# Spawn Agent
+# Implement
+
+Decide how to implement a task and execute it. The first decision is whether
+to do the work directly or delegate to separate agents.
+
+## Assess Complexity
+
+| Complexity | Signals | Approach |
+|------------|---------|----------|
+| **Simple** | Single concern, few files, no design decisions | Implement directly |
+| **Medium** | Multi-file, one concern, clear patterns to follow | Spawn a single agent |
+| **Complex** | Multiple independent tracks, cross-cutting concerns | Spawn parallel agents in worktrees |
+
+For trivial steps (a few lines, no judgment), always do them inline.
+
+## Direct Implementation
+
+When implementing directly:
+
+- Execute with autonomy on mechanical work
+- Consult the user for design decisions
+- Run the project's quality checks (fmt, lint, check, test) when done
+
+## Delegating to Agents
 
 Delegate implementation work to separate pi sessions running in tmux windows.
 Supports single agents (same branch) and parallel agents (separate worktrees).
 
-## Prerequisites
+### Prerequisites
 
-The managing agent (your session) must have the `send_to_session` tool
-available via the session-control extension. This is enabled by default when
-the control extension is installed.
+The managing agent must have the `send_to_session` tool available via the
+session-control extension. This is enabled by default when the control
+extension is installed.
 
-## Deciding What to Spawn
-
-- **Single agent, no worktree:** One track of work on the current branch.
-  Use when the work is sequential and doesn't need isolation.
-- **Single agent, worktree:** One track that benefits from isolation (e.g.,
-  you want to keep working on something else while it runs).
-- **Parallel agents, worktrees:** Multiple independent tracks that can run
-  simultaneously. Each gets its own worktree and sub-branch.
-
-For trivial steps (a few lines, no judgment), do them inline — don't spawn.
-
-## Session Naming
-
-Spawned agents get a session name prefixed with the tmux session name to
-avoid collisions across projects:
-
-```
-<tmux-session>-<label>
-```
-
-For example, in tmux session `oxbo`: `oxbo-correctness`, `oxbo-p1-data`.
-
-Get the tmux session name:
-
-```bash
-TMUX_SESSION=$(tmux display-message -p '#S')
-```
-
-## Model Selection
+### Model Selection
 
 Match the model to the task:
 
@@ -53,7 +48,7 @@ Match the model to the task:
 | Multi-file reasoning | sonnet | medium | Route handlers, test files |
 | Complex design | sonnet | high | Architecture changes, tricky logic |
 
-## Writing Prompts
+### Writing Prompts
 
 Write clear, specific prompts that include:
 
@@ -77,12 +72,29 @@ tmux send-keys -t <session>:<window> 'pi --model <model> --thinking <level> --no
 Resolve design decisions before spawning. Don't push unresolved choices into
 prompts — they produce code that needs rework.
 
-## Spawning
+### Session Naming
+
+Spawned agents get a session name prefixed with the tmux session name to
+avoid collisions across projects:
+
+```
+<tmux-session>-<label>
+```
+
+For example, in tmux session `oxbo`: `oxbo-correctness`, `oxbo-p1-data`.
+
+Get the tmux session name:
+
+```bash
+TMUX_SESSION=$(tmux display-message -p '#S')
+```
+
+### Spawning
 
 All spawned agents include `--name` for inter-session communication (session
 control is enabled by default). The tmux window provides visual monitoring.
 
-### Single agent (no worktree)
+#### Single agent (no worktree)
 
 ```bash
 TMUX_SESSION=$(tmux display-message -p '#S')
@@ -92,7 +104,7 @@ tmux send-keys -t $TMUX_SESSION:<label> \
   'cd <project-dir> && pi --model <model> --thinking <level> --no-session --name '$TMUX_SESSION'-<label> -p "<prompt>"' Enter
 ```
 
-### Single agent (worktree)
+#### Single agent (worktree)
 
 ```bash
 TMUX_SESSION=$(tmux display-message -p '#S')
@@ -104,7 +116,7 @@ tmux send-keys -t $TMUX_SESSION:<label> \
   'pi --model <model> --thinking <level> --no-session --name '$TMUX_SESSION'-<label> -p "<prompt>"' Enter
 ```
 
-### Parallel agents
+#### Parallel agents
 
 Repeat the worktree pattern for each independent track:
 
@@ -132,11 +144,9 @@ When parallel tracks share files (e.g., types, data layer), only one track
 should own those files. Don't create stubs — defer compilation to
 post-integration.
 
-## Monitoring
+### Monitoring
 
-### Via send_to_session
-
-Use `send_to_session` for communication with spawned agents:
+#### Via send_to_session
 
 ```
 # Check on an agent
@@ -146,7 +156,7 @@ send_to_session(sessionName: "<name>", action: "get_summary")
 send_to_session(sessionName: "<name>", message: "<guidance>", mode: "steer")
 ```
 
-### Waiting for completion
+#### Waiting for completion
 
 Wait for agents to finish by checking if the shell has returned:
 
@@ -158,7 +168,7 @@ for win in <window-list>; do
 done
 ```
 
-### Fallback
+#### Fallback
 
 If `send_to_session` fails (agent not reachable), fall back to tmux:
 
@@ -166,7 +176,7 @@ If `send_to_session` fails (agent not reachable), fall back to tmux:
 tmux capture-pane -t <session>:<window> -p -S -40
 ```
 
-## Integration
+### Integration
 
 After an agent completes:
 
@@ -186,5 +196,8 @@ After an agent completes:
    rm -f /tmp/prompt-<label>.md
    ```
 
-After integrating a batch, run the full quality checks before proceeding.
+## Quality Gate
+
+After implementation is complete — whether direct or delegated — run the
+project's full quality checks (fmt, lint, check, test) before moving on.
 Integration can surface issues that each track passed individually.

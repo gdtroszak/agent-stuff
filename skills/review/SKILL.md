@@ -26,7 +26,11 @@ Focuses on bugs, security issues, logic errors, and missing edge cases.
   Fall back to another provider if erroring or unresponsive.
 - **Thinking level:** Scale to diff size — high for small diffs, xhigh for
   large/architectural diffs.
-- **Review prompt:** `/review branch <base-branch>`
+- **Checklist:** Read `skills/review/checklist.md` (resolve path relative to
+  this skill's directory) and include it in the review prompt. The checklist
+  provides specific categories and severity levels to review against.
+- **Review prompt:** `/review branch <base-branch>` with the checklist
+  contents appended.
 
 ### Consistency
 
