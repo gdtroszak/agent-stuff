@@ -109,6 +109,9 @@ Custom pi configuration is stored at `$HOME/development/personal/agent-stuff/` a
   file — use the edit tool per-file, or verify the pattern won't match
   unintended lines
 - When a shared function's contract changes, list the impact on each caller
+- Before modifying a shared function's behavior, verify the change against
+  existing tests and representative call sites (e.g., quick `deno eval` or test
+  run). Don't assume a targeted fix is safe for all consumers.
 - Only export what consumers need. Test internal behavior through the public API.
 
 ### Debugging

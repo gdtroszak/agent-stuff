@@ -78,14 +78,15 @@ tmux send-keys -t $TMUX_SESSION:<type> \
   'cd <project-dir> && pi --provider <provider> --model <model> --thinking <level> --name '$TMUX_SESSION'-<type>' Enter
 ```
 
-Wait for the session to be ready (socket created), then send the review
-prompt and progress/verdict instructions via `send_to_session`:
+Wait for the session to be ready. After sleeping, verify the session name
+appears in `list_sessions` before sending by name. If it doesn't appear
+within ~10 seconds, fall back to the session ID from tmux capture:
 
 ```bash
-sleep 5
+tmux capture-pane -t <session>:<type> -p -S -5 | grep 'session '
 ```
 
-Then use the `send_to_session` tool:
+Then send the review prompt via `send_to_session`:
 
 ```
 send_to_session(
@@ -136,8 +137,11 @@ send_to_session(
 
 ## Handling Findings
 
-1. Read the verdict from the received message
-2. Present findings to the user before closing the review window
+1. When a verdict message arrives, immediately present the full verdict and
+   findings to the user — the user cannot see inter-session messages
+2. Do not just reference or summarize from earlier — show the actual verdict
+3. **Wait for the user to direct how to handle findings** — do not fix them
+   autonomously. The user needs to see, understand, and decide the approach.
 3. If verdict is clean — close the window, done
 4. If findings exist:
    a. Assess each finding — address valid ones, note any that are out of
