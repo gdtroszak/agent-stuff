@@ -6,7 +6,9 @@
   them so the user can review first. This applies even when the changes feel
   routine or obvious.
 - Don't push without explicit approval — even for hotfixes, even when
-  production is broken. Commit locally, show the diff, wait.
+  production is broken. Commit locally, show the diff, wait. Urgency is
+  not permission to skip this. If the build is red, the answer is still
+  "here's the fix, ready to push?" not pushing.
 - Always present PR title and description for review before creating — then
   **stop and wait** for approval before pushing or running `gh pr create`
 - PR titles: plain descriptive language, no conventional-commit prefixes or
@@ -132,6 +134,12 @@ Custom pi configuration is stored at `$HOME/development/personal/agent-stuff/` a
   synthesis, cloud service semantics) before acting on them — test locally or
   check docs, don't guess and push.
 
+### CI & Workflows
+
+- Before referencing a GitHub Action (`uses: org/action@version`), verify the
+  repository exists (`gh api repos/org/action`). Don't assume an action exists
+  because the naming pattern looks right.
+
 ### Planning
 
 - For multi-phase implementation plans, propose discussing phase-by-phase rather
@@ -140,6 +148,9 @@ Custom pi configuration is stored at `$HOME/development/personal/agent-stuff/` a
 - For infrastructure migrations, ask about the transition strategy (coexistence,
   feature flags, cutover plan) before breaking into phases — it shapes every
   phase boundary.
+- When a plan depends on a performance or caching assumption, verify it with a
+  test run before committing to the approach. Don't repeat claims from issue
+  descriptions or docs without validation.
 
 ### Process
 
