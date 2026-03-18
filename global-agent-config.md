@@ -5,7 +5,8 @@
 - Don't commit without explicit approval — leave changes unstaged after making
   them so the user can review first. This applies even when the changes feel
   routine or obvious.
-- Don't push without asking
+- Don't push without explicit approval — even for hotfixes, even when
+  production is broken. Commit locally, show the diff, wait.
 - Always present PR title and description for review before creating — then
   **stop and wait** for approval before pushing or running `gh pr create`
 - PR titles: plain descriptive language, no conventional-commit prefixes or
@@ -51,6 +52,9 @@ Custom pi configuration is stored at `$HOME/development/personal/agent-stuff/` a
 
 ## Code Reviews
 
+- When asked to review code — including self-authored work — use the review skill
+  to launch separate review agents. Manual read-throughs are for quick
+  spot-checks, not formal review.
 - When reviewing a PR, read linked issues (and parent issues) before reading the
   diff — the issue sets acceptance criteria and design intent
 - When asked to review a branch or codebase, scope to the current branch only —
@@ -90,6 +94,9 @@ Custom pi configuration is stored at `$HOME/development/personal/agent-stuff/` a
 
 ### Code Changes
 
+- When existing code follows one pattern and newer code follows a different one,
+  evaluate which is better before recommending convergence. Don't default to
+  "match what's there" — the newer pattern may be the one to adopt.
 - When configuring tools, only set values that differ from the tool's defaults. If unsure about a non-default choice, ask.
 - Write idiomatic, minimal code; avoid unnecessary abstraction
 - Never use `as any` — treat it as a signal the approach is wrong, not a quick
@@ -116,9 +123,14 @@ Custom pi configuration is stored at `$HOME/development/personal/agent-stuff/` a
 
 ### Debugging
 
+- When debugging production issues, reproduce and fix locally first. Don't push
+  speculative fixes to production.
 - When the same error persists after 2-3 fix attempts, stop guessing and add
   observability — print intermediate state, log computed configs, dump args.
   Inspect before trying more fixes.
+- Verify assumptions about infrastructure behavior (API Gateway routing, CDK
+  synthesis, cloud service semantics) before acting on them — test locally or
+  check docs, don't guess and push.
 
 ### Planning
 
